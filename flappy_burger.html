@@ -1,0 +1,183 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trump Flappy Game</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Load background image
+    const bgImg = new Image();
+    bgImg.src = 'https://raw.githubusercontent.com/adog13/my-images/303970ddb6d1843827e6da1ca1d6dca324dfcff9/crypto_burger_background.jpg';
+
+    // Load character image
+    const trumpImg = new Image();
+    trumpImg.src = 'https://raw.githubusercontent.com/adog13/my-images/9d6fbc27b670a18ca9a29653fb11853d31f3b1fe/trump_superman_head.jpg';
+
+    // Game objects
+    const trump = {
+        x: 50,
+        y: 200,
+        width: 90,
+        height: 90,
+        speed: 10,
+        dy: 0,
+        gravity: 0.3,
+        jump: -6
+    };
+
+    const pipes = [];
+    const pipeWidth = 50;
+    const pipeGap = 250;
+
+    // Game state
+    let score = 0;
+    let gameover = false;
+    let frames = 0;
+    let gameStarted = false; // new flag to check if game has started
+
+    function drawSprite(img, sX, sY, sW, sH, dX, dY, dW, dH) {
+        ctx.drawImage(img, sX, sY, sW, sH, dX, dY, dW, dH);
+    }
+
+    function update() {
+        if (gameover) return;
+
+        trump.dy += trump.gravity;
+        trump.y += trump.dy;
+
+        if (trump.y + trump.height > canvas.height) {
+            trump.y = canvas.height - trump.height;
+            trump.dy = 0;
+            gameover = true;
+        }
+
+        if (frames % 100 === 0) {
+            let height = Math.floor(Math.random() * (canvas.height - pipeGap - 50));
+            pipes.push({x: canvas.width, y: height, width: pipeWidth, passed: false});
+        }
+
+        pipes.forEach((pipe, index) => {
+            pipe.x -= 5;
+            if (pipe.x + pipe.width < 0) pipes.splice(index, 1);
+           
+            if (!pipe.passed && pipe.x + pipe.width < trump.x) {
+                pipe.passed = true;
+                score++;
+            }
+
+            if (
+                trump.x < pipe.x + pipe.width &&
+                trump.x + trump.width > pipe.x &&
+                (trump.y < pipe.y || trump.y + trump.height > pipe.y + pipeGap)
+            ) {
+                gameover = true;
+            }
+        });
+
+        frames++;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw the background image
+        if (bgImg.complete) {
+            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = "#87CEEB";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Draw Trump using the image
+        drawSprite(trumpImg, 0, 0, trumpImg.width, trumpImg.height, trump.x, trump.y, trump.width, trump.height);
+
+        // Draw pipes
+        ctx.fillStyle = "#00FF00";
+        pipes.forEach(pipe => {
+            ctx.fillRect(pipe.x, 0, pipe.width, pipe.y);
+            ctx.fillRect(pipe.x, pipe.y + pipeGap, pipe.width, canvas.height - (pipe.y + pipeGap));
+        });
+
+        // Score
+        ctx.fillStyle = "#000";
+        ctx.font = "24px Arial";
+        ctx.fillText("Score: " + score, 10, 30);
+
+        if (!gameStarted) {
+            drawStartScreen();
+        }
+
+        if (gameover) {
+            drawGameOver();
+        }
+    }
+
+    function drawStartScreen() {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "black";
+        ctx.font = "48px Arial";
+        ctx.fillText("Click to Start", canvas.width/2 - 120, canvas.height/2);
+    }
+
+    function drawGameOver() {
+        ctx.fillStyle = "rgba(255, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.font = "48px Arial";
+        ctx.fillText("Game Over", canvas.width/2 - 75, canvas.height/2);
+        ctx.font = "24px Arial";
+        ctx.fillText("Click to Restart", canvas.width/2 - 75, canvas.height/2 + 50);
+    }
+
+    // Game Loop
+    function mainLoop() {
+        update();
+        draw();
+        if (!gameover) {
+            requestAnimationFrame(mainLoop);
+        }
+    }
+
+    canvas.addEventListener('click', function() {
+        if (!gameStarted) {
+            gameStarted = true;
+            mainLoop();
+        } else if (gameover) {
+            // Reset game state
+            trump.y = 200;
+            trump.dy = 0;
+            pipes.length = 0;
+            score = 0;
+            gameover = false;
+            frames = 0;
+            mainLoop();
+        } else {
+            trump.dy = trump.jump;
+        }
+    });
+
+    // Start the game loop when both images are loaded
+    Promise.all([trumpImg, bgImg].map(img => new Promise(resolve => img.onload = resolve)))
+        .then(() => {
+            // Images loaded, ready to start
+            drawStartScreen();
+        })
+        .catch(() => {
+            console.error("One or more images failed to load. Cannot start game.");
+        });
+    </script>
+</body>
+</html>
+	
